@@ -66,7 +66,7 @@ for t in res:
 valid = read_dev_data()
 
 valid_data = []
-for t in res:
+for t in valid:
     valid_data.append((t[1],t[2],t[0]))
 
 token_dict, keep_tokens = load_vocab(
