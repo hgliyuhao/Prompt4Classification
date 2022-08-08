@@ -11,63 +11,26 @@ from bert4keras.snippets import to_array
 from keras.layers import Lambda
 from keras.models import Model
 from tqdm import tqdm
+import fairies as fa 
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-maxlen = 48
-batch_size = 10
-epochs = 20
-p = 'D:/Ai/model/chinese_roberta_wwm_ext_L-12_H-768_A-12/'
+maxlen = 64
+batch_size = 48
+epochs = 40
+p = '/home/pre_models/chinese-roberta-wwm-ext-tf/'
 config_path = p +'bert_config.json'
 checkpoint_path = p + 'bert_model.ckpt'
 dict_path = p +'vocab.txt'
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
-def read_data():
 
-    df_train = pd.read_csv('train_20200228.csv',encoding='ANSI', dtype={'id': np.int16, 'target': np.int8})
-    res = get_bert_data(df_train)
-    return res
+train_data = fa.read("train.json")
+import random
+random.shuffle(train_data)
 
-def read_dev_data():
+valid_data = fa.read("dev.json")
 
-    df_dev = pd.read_csv('dev_20200228.csv',encoding='ANSI', dtype={'id': np.int16, 'target': np.int8})
-    res = get_bert_data(df_dev)
-    return res    
-
-def get_bert_data(df_data):
-
-    length = len(df_data)
-    res = []
-    for i in range(length):
-        label  = int(df_data['label'][i])
-        query1 = clean_data(df_data['query1'][i])
-        query2 = clean_data(df_data['query2'][i])
-        res.append([label,query1,query2])
-          
-    return res
-
-def clean_data(text):
-    text = text.lower()
-    text = re.sub('[?]','',text)
-    text = re.sub('？','',text)
-    text = re.sub('擤','擦',text)
-    text = re.sub('葶苈','',text)
-    text = re.sub('肟','',text)
-    text = re.sub('缬','',text)
-    text = re.sub('蚧','',text)
-    return text
-
-res = read_data()
-train_data = []
-
-for t in res:
-    train_data.append((t[1],t[2],t[0]))  
-
-valid = read_dev_data()
-
-valid_data = []
-for t in res:
-    valid_data.append((t[1],t[2],t[0]))
 
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
@@ -92,9 +55,9 @@ class data_generator(DataGenerator):
 
             data = self.data[i]
             text = "两句话意思相同"
-            text1 = data[0]
-            text2 = data[1]
-            label = data[2]
+            text1 = data[1]
+            text2 = data[2]
+            label = data[0]
 
             final_text = text + ':' + text1 + ',' + text2            
             token_ids, segment_ids = tokenizer.encode(final_text, maxlen=maxlen)
@@ -130,7 +93,7 @@ model = build_transformer_model(
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
 
-output = Lambda(lambda x: x[:, 1: 2])(model.output)
+output = Lambda(lambda x: x[:, 6: 7])(model.output)
 model = Model(model.input, output)
 model.summary()
 
@@ -143,7 +106,7 @@ def masked_cross_entropy(y_true, y_pred):
     cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
     return cross_entropy
 
-model.compile(loss=masked_cross_entropy, optimizer=Adam(1e-5))
+model.compile(loss=masked_cross_entropy, optimizer=Adam(2e-5))
 
 def get_ngram_set(x, n):
     """生成ngram合集，返回结果格式是:
@@ -169,9 +132,9 @@ def predict(data):
     """
 
     text = "两句话意思相同"
-    text1 = data[0]
-    text2 = data[1]
-    label = data[2]
+    text1 = data[1]
+    text2 = data[2]
+    label = data[0]
 
     final_text = text + ':' + text1 + ',' + text2            
     token_ids, segment_ids = tokenizer.encode(final_text, maxlen=maxlen)
@@ -240,6 +203,13 @@ if __name__ == '__main__':
         callbacks=[evaluator]
     )
 
+    model.load_weights('./best_model.weights')
+    acc,out = evaluat_vail_data(valid_data)
+    print(acc)
+    print(out)
+    # 0.8981527708437343
+    # 0.9041437843235147
 else:
 
     model.load_weights('./best_model.weights')
+    evaluat_vail_data(valid_data)
