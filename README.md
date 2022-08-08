@@ -3,6 +3,8 @@
 # 博客
 https://blog.csdn.net/HGlyh/article/details/120810515?spm=1001.2014.3001.5501  
 
-|     | sentencs_pair | mlm     |
-|-----|---------------|---------|
-| acc | 0.93656       | 0.90414 |
+# 效果
+
+|     | sentencs_pair | prompt_mlm |
+|-----|---------------|------------|
+| acc | 0.93656       | 0.90414    |
