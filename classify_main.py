@@ -15,7 +15,7 @@ from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import open
 from keras.layers import Dropout, Dense
 import fairies as fa
-from tqdm import tqdm 
+from tqdm import tqdm
 import os
 import time
 
@@ -26,32 +26,33 @@ maxlen = 48
 batch_size = 64
 
 p = '/home/pre_models/chinese-roberta-wwm-ext-tf/'
-config_path = p +'bert_config.json'
+config_path = p + 'bert_config.json'
 checkpoint_path = p + 'bert_model.ckpt'
-dict_path = p +'vocab.txt'
+dict_path = p + 'vocab.txt'
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 def load_data(fileName):
-    
     """加载数据
     """
     D = fa.read(fileName)
 
     return D
 
+
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
+
 
 class data_generator(DataGenerator):
     """数据生成器
     """
+
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-        for is_end, (label,text1,text2) in self.sample(random):
+        for is_end, (label, text1, text2) in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(
-                text1,text2,maxlen=maxlen
-            )
+                text1, text2, maxlen=maxlen)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_labels.append([label])
@@ -62,16 +63,13 @@ class data_generator(DataGenerator):
                 yield [batch_token_ids, batch_segment_ids], batch_labels
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
 
+
 # 加载预训练模型
-bert = build_transformer_model(
-    config_path,
-    checkpoint_path
-)
+bert = build_transformer_model(config_path, checkpoint_path)
 
-output = Lambda(lambda x: x[:, 0],
-                name='CLS-token')(bert.output)
+output = Lambda(lambda x: x[:, 0], name='CLS-token')(bert.output)
 
-final_output = Dense(2,activation='softmax')(output)
+final_output = Dense(2, activation='softmax')(output)
 model = Model(bert.inputs, final_output)
 
 model.summary()
@@ -89,11 +87,11 @@ valid_data = load_data("dev.json")
 import random
 random.shuffle(train_data)
 
-
 print('数据处理完成')
 
 train_generator = data_generator(train_data, batch_size)
 valid_generator = data_generator(valid_data, batch_size)
+
 
 def evaluate(data):
     total, right = 0., 0.
@@ -104,9 +102,11 @@ def evaluate(data):
         right += (y_true == y_pred).sum()
     return right / total
 
+
 class Evaluator(keras.callbacks.Callback):
     """评估与保存
     """
+
     def __init__(self):
         self.best_val_acc = 0.
 
@@ -115,10 +115,8 @@ class Evaluator(keras.callbacks.Callback):
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             model.save_weights('model/electra.weights')
-        print(
-            u'val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n' %
-            (val_acc, self.best_val_acc, 0)
-        )
+        print(u'val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n' %
+              (val_acc, self.best_val_acc, 0))
 
 
 if __name__ == '__main__':
@@ -129,8 +127,6 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=20,
-        callbacks=[evaluator]
-    )
+        callbacks=[evaluator])
 
     # 0.93656
-    
